@@ -1,12 +1,13 @@
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
+// Use Railway backend domain if provided, otherwise fallback to localhost
 const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const api = axios.create({
   baseURL,
   headers: { 'Content-Type': 'application/json' },
-  withCredentials: true  // Send httpOnly cookies with every request
+  withCredentials: true // Send httpOnly cookies with every request
 });
 
 // Handle common HTTP errors globally
@@ -22,7 +23,6 @@ api.interceptors.response.use(
     const message = data?.message || 'An unexpected error occurred';
 
     if (status === 401) {
-      // Cookie is invalid/expired — clear local user state and redirect
       localStorage.removeItem('user');
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
