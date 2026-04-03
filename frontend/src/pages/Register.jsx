@@ -13,7 +13,6 @@ const Register = () => {
     setError('');
     setLoading(true);
     try {
-      // FIX #4: Register then immediately login to establish a session
       await registerUser(form);
       const user = await loginUser({ email: form.email, password: form.password });
       navigate(user.role === 'admin' ? '/admin' : '/dashboard');
@@ -24,54 +23,78 @@ const Register = () => {
     }
   };
 
+  const inputStyle = {
+    width: '100%', background: '#1a1a1a', border: '1px solid rgba(200,170,100,0.2)',
+    color: '#f5f0e8', padding: '13px 16px', fontSize: '14px',
+    fontFamily: 'system-ui, sans-serif', outline: 'none', boxSizing: 'border-box',
+    transition: 'border-color 0.2s',
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Create an account</h2>
-        <p className="text-gray-500 text-sm mb-6">Start booking your perfect stay</p>
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', fontFamily: "'Georgia', serif" }}>
+      {/* Left image panel */}
+      <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'flex-end', padding: '48px' }}>
+        <img
+          src="https://images.pexels.com/photos/261102/pexels-photo-261102.jpeg"
+          alt="hotel"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.4 }}
+        />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(10,10,10,0.9) 0%, transparent 60%)' }} />
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <Link to="/" style={{ fontSize: '22px', fontWeight: '700', letterSpacing: '0.08em', color: '#c8aa64', textDecoration: 'none' }}>LUXESTAY</Link>
+          <p style={{ color: '#8a8070', fontFamily: 'system-ui, sans-serif', fontSize: '14px', marginTop: '8px' }}>Your perfect stay begins here.</p>
+        </div>
+      </div>
 
-        {error && <div className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-lg mb-4">{error}</div>}
+      {/* Right form panel */}
+      <div style={{ width: '480px', background: '#111', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '64px 56px' }}>
+        <p style={{ fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#c8aa64', marginBottom: '16px', fontFamily: 'system-ui, sans-serif' }}>Join Us</p>
+        <h1 style={{ fontSize: '34px', fontWeight: '400', color: '#f5f0e8', margin: '0 0 8px' }}>Create account</h1>
+        <p style={{ color: '#8a8070', fontSize: '14px', fontFamily: 'system-ui, sans-serif', marginBottom: '40px' }}>Start booking your perfect stay</p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-            <input
-              type="text" required minLength={2} maxLength={30}
-              value={form.username}
-              onChange={e => setForm({ ...form, username: e.target.value })}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            />
+        {error && (
+          <div style={{ background: 'rgba(200,80,80,0.1)', border: '1px solid rgba(200,80,80,0.3)', padding: '12px 16px', color: '#e08080', fontSize: '13px', fontFamily: 'system-ui, sans-serif', marginBottom: '24px' }}>
+            {error}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email" required
-              value={form.email}
-              onChange={e => setForm({ ...form, email: e.target.value })}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
-              type="password" required minLength={8}
-              value={form.password}
-              onChange={e => setForm({ ...form, password: e.target.value })}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            />
-            <p className="text-xs text-gray-400 mt-1">Minimum 8 characters</p>
-          </div>
-          <button
-            type="submit" disabled={loading}
-            className="w-full bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition"
+        )}
+
+        <form onSubmit={handleSubmit}>
+          {[
+            { label: 'Username', key: 'username', type: 'text', min: 2, max: 30 },
+            { label: 'Email Address', key: 'email', type: 'email' },
+            { label: 'Password', key: 'password', type: 'password', min: 8 },
+          ].map(({ label, key, type, min, max }) => (
+            <div key={key} style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '10px', letterSpacing: '0.16em', textTransform: 'uppercase', color: '#8a8070', marginBottom: '8px', fontFamily: 'system-ui, sans-serif' }}>{label}</label>
+              <input
+                type={type} required
+                minLength={min} maxLength={max}
+                value={form[key]}
+                onChange={e => setForm({ ...form, [key]: e.target.value })}
+                style={inputStyle}
+                onFocus={e => e.target.style.borderColor = 'rgba(200,170,100,0.5)'}
+                onBlur={e => e.target.style.borderColor = 'rgba(200,170,100,0.2)'}
+              />
+              {key === 'password' && <p style={{ fontSize: '11px', color: '#6a6060', marginTop: '6px', fontFamily: 'system-ui, sans-serif' }}>Minimum 8 characters</p>}
+            </div>
+          ))}
+
+          <button type="submit" disabled={loading} style={{
+            width: '100%', background: '#c8aa64', color: '#0a0a0a', border: 'none',
+            padding: '15px', fontSize: '11px', letterSpacing: '0.18em', textTransform: 'uppercase',
+            fontFamily: 'system-ui, sans-serif', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.7 : 1, marginTop: '8px',
+          }}
+            onMouseEnter={e => { if (!loading) e.target.style.background = '#e0c07a'; }}
+            onMouseLeave={e => e.target.style.background = '#c8aa64'}
           >
-            {loading ? 'Creating account…' : 'Create account'}
+            {loading ? 'Creating account…' : 'Create Account'}
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
-          Already have an account?{' '}
-          <Link to="/login" className="text-indigo-600 font-medium hover:underline">Sign in</Link>
+        <p style={{ textAlign: 'center', fontSize: '13px', color: '#8a8070', marginTop: '32px', fontFamily: 'system-ui, sans-serif' }}>
+          Already a member?{' '}
+          <Link to="/login" style={{ color: '#c8aa64', textDecoration: 'none' }}>Sign in →</Link>
         </p>
       </div>
     </div>

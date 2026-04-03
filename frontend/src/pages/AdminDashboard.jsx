@@ -4,8 +4,17 @@ import { logoutUser } from '../services/authService';
 import {
   getAllUsers, updateUser, deleteUser,
   getAllRooms, createRoom, updateRoom, deleteRoom,
-  getAllBookings, updateBooking, cancelBooking, deleteBooking  // FIX #5: added cancelBooking, deleteBooking
+  getAllBookings, updateBooking, cancelBooking, deleteBooking
 } from '../services/adminService';
+
+const S = {
+  page: { minHeight: '100vh', background: '#0a0a0a', color: '#f5f0e8', fontFamily: "'Georgia', serif" },
+  nav: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 48px', height: '72px', borderBottom: '1px solid rgba(200,170,100,0.15)', background: '#0a0a0a' },
+  label: { display: 'block', fontSize: '10px', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#8a8070', marginBottom: '8px', fontFamily: 'system-ui, sans-serif' },
+  input: { width: '100%', background: '#1a1a1a', border: '1px solid rgba(200,170,100,0.2)', color: '#f5f0e8', padding: '10px 14px', fontSize: '13px', fontFamily: 'system-ui, sans-serif', outline: 'none', boxSizing: 'border-box' },
+  th: { padding: '12px 20px', fontSize: '9px', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#8a8070', fontFamily: 'system-ui, sans-serif', fontWeight: '400', textAlign: 'left', borderBottom: '1px solid rgba(200,170,100,0.1)' },
+  td: { padding: '16px 20px', fontSize: '13px', color: '#c8b89a', fontFamily: 'system-ui, sans-serif', borderBottom: '1px solid rgba(255,255,255,0.04)' },
+};
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -13,8 +22,8 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [bookings, setBookings] = useState([]);
-  const [msg, setMsg] = useState('');
-  const [roomForm, setRoomForm] = useState({ type:'', price:'', description:'', capacity:2, size:300, amenities:'', images:'', availability:true, featured:false });
+  const [msg, setMsg] = useState({ text: '', type: '' });
+  const [roomForm, setRoomForm] = useState({ type: '', price: '', description: '', capacity: 2, size: 300, amenities: '', images: '', availability: true, featured: false });
   const [editingRoom, setEditingRoom] = useState(null);
 
   useEffect(() => {
@@ -24,207 +33,156 @@ const AdminDashboard = () => {
   }, [tab]);
 
   const handleLogout = async () => { await logoutUser(); navigate('/login'); };
-  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
+  const flash = (text, type = 'success') => { setMsg({ text, type }); setTimeout(() => setMsg({ text: '', type: '' }), 3000); };
+  const fmt = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-  // --- BOOKINGS ---
   const handleCancelBooking = async (id) => {
     if (!confirm('Cancel this booking?')) return;
-    try {
-      await cancelBooking(id);
-      setBookings(prev => prev.map(b => b._id === id ? { ...b, status: 'cancelled' } : b));
-      flash('✅ Booking cancelled');
-    } catch (e) { flash(`❌ ${e.message}`); }
+    try { await cancelBooking(id); setBookings(prev => prev.map(b => b._id === id ? { ...b, status: 'cancelled' } : b)); flash('Booking cancelled'); }
+    catch (e) { flash(e.message, 'error'); }
   };
 
   const handleDeleteBooking = async (id) => {
     if (!confirm('Permanently delete this booking?')) return;
-    try {
-      await deleteBooking(id);
-      setBookings(prev => prev.filter(b => b._id !== id));
-      flash('✅ Booking deleted');
-    } catch (e) { flash(`❌ ${e.message}`); }
+    try { await deleteBooking(id); setBookings(prev => prev.filter(b => b._id !== id)); flash('Booking deleted'); }
+    catch (e) { flash(e.message, 'error'); }
   };
 
-  // --- USERS ---
   const handleDeleteUser = async (id) => {
     if (!confirm('Delete this user?')) return;
-    try {
-      await deleteUser(id);
-      setUsers(prev => prev.filter(u => u._id !== id));
-      flash('✅ User deleted');
-    } catch (e) { flash(`❌ ${e.message}`); }
+    try { await deleteUser(id); setUsers(prev => prev.filter(u => u._id !== id)); flash('User deleted'); }
+    catch (e) { flash(e.message, 'error'); }
   };
 
   const handleToggleAdmin = async (user) => {
     const newRole = user.role === 'admin' ? 'user' : 'admin';
-    try {
-      const updated = await updateUser(user._id, { ...user, role: newRole });
-      setUsers(prev => prev.map(u => u._id === user._id ? updated : u));
-    } catch (e) { flash(`❌ ${e.message}`); }
+    try { const updated = await updateUser(user._id, { ...user, role: newRole }); setUsers(prev => prev.map(u => u._id === user._id ? updated : u)); }
+    catch (e) { flash(e.message, 'error'); }
   };
 
-  // --- ROOMS ---
   const handleRoomSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editingRoom) {
         const updated = await updateRoom(editingRoom._id, roomForm);
         setRooms(prev => prev.map(r => r._id === editingRoom._id ? updated : r));
-        flash('✅ Room updated');
+        flash('Room updated');
       } else {
         const created = await createRoom(roomForm);
         setRooms(prev => [created, ...prev]);
-        flash('✅ Room created');
+        flash('Room created');
       }
       setEditingRoom(null);
-      setRoomForm({ type:'', price:'', description:'', capacity:2, size:300, amenities:'', images:'', availability:true, featured:false });
-    } catch (e) { flash(`❌ ${e.message}`); }
+      setRoomForm({ type: '', price: '', description: '', capacity: 2, size: 300, amenities: '', images: '', availability: true, featured: false });
+    } catch (e) { flash(e.message, 'error'); }
   };
 
   const handleDeleteRoom = async (id) => {
     if (!confirm('Delete this room?')) return;
-    try {
-      await deleteRoom(id);
-      setRooms(prev => prev.filter(r => r._id !== id));
-      flash('✅ Room deleted');
-    } catch (e) { flash(`❌ ${e.message}`); }
+    try { await deleteRoom(id); setRooms(prev => prev.filter(r => r._id !== id)); flash('Room deleted'); }
+    catch (e) { flash(e.message, 'error'); }
   };
 
   const startEdit = (room) => {
     setEditingRoom(room);
-    setRoomForm({
-      ...room,
-      amenities: Array.isArray(room.amenities) ? room.amenities.join(', ') : room.amenities,
-      images: Array.isArray(room.images) ? room.images.join(', ') : room.images,
-    });
+    setRoomForm({ ...room, amenities: Array.isArray(room.amenities) ? room.amenities.join(', ') : room.amenities, images: Array.isArray(room.images) ? room.images.join(', ') : room.images });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const tabs = ['bookings', 'rooms', 'users'];
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="flex items-center justify-between px-8 py-4 bg-white shadow-sm">
-        <Link to="/" className="text-2xl font-bold text-indigo-600">LuxeStay <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full ml-1">Admin</span></Link>
-        <button onClick={handleLogout} className="text-sm text-red-500 hover:text-red-700">Logout</button>
+    <div style={S.page}>
+      <nav style={S.nav}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <Link to="/" style={{ fontSize: '20px', fontWeight: '700', letterSpacing: '0.08em', color: '#c8aa64', textDecoration: 'none' }}>LUXESTAY</Link>
+          <span style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', background: 'rgba(200,170,100,0.12)', color: '#c8aa64', padding: '4px 10px', border: '1px solid rgba(200,170,100,0.25)', fontFamily: 'system-ui, sans-serif' }}>Admin</span>
+        </div>
+        <button onClick={handleLogout} style={{ background: 'transparent', border: '1px solid rgba(200,80,80,0.3)', color: '#e08080', padding: '8px 20px', fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'system-ui, sans-serif', cursor: 'pointer' }}>Logout</button>
       </nav>
 
-      <div className="max-w-6xl mx-auto px-8 py-10">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">Admin Dashboard</h1>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '56px 48px' }}>
+        <div style={{ marginBottom: '40px' }}>
+          <p style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#c8aa64', marginBottom: '12px', fontFamily: 'system-ui, sans-serif' }}>Control Panel</p>
+          <h1 style={{ fontSize: '40px', fontWeight: '400', color: '#f5f0e8', margin: 0 }}>Admin Dashboard</h1>
+        </div>
 
-        {msg && <div className="mb-4 text-sm bg-white rounded-xl px-4 py-3 shadow-sm border">{msg}</div>}
+        {msg.text && (
+          <div style={{ marginBottom: '24px', padding: '14px 20px', fontSize: '13px', fontFamily: 'system-ui, sans-serif', border: '1px solid', borderColor: msg.type === 'error' ? 'rgba(200,80,80,0.3)' : 'rgba(200,170,100,0.3)', background: msg.type === 'error' ? 'rgba(200,80,80,0.08)' : 'rgba(200,170,100,0.08)', color: msg.type === 'error' ? '#e08080' : '#c8aa64' }}>
+            {msg.type === 'error' ? '✕' : '✓'} {msg.text}
+          </div>
+        )}
 
         {/* Tabs */}
-        <div className="flex gap-4 mb-8 border-b">
-          {tabs.map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`pb-2 text-sm font-medium capitalize border-b-2 transition ${tab === t ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+        <div style={{ display: 'flex', borderBottom: '1px solid rgba(200,170,100,0.1)', marginBottom: '40px' }}>
+          {['bookings', 'rooms', 'users'].map(t => (
+            <button key={t} onClick={() => setTab(t)} style={{ padding: '14px 32px', background: 'transparent', border: 'none', borderBottom: tab === t ? '2px solid #c8aa64' : '2px solid transparent', color: tab === t ? '#c8aa64' : '#8a8070', fontSize: '11px', letterSpacing: '0.16em', textTransform: 'uppercase', fontFamily: 'system-ui, sans-serif', cursor: 'pointer', marginBottom: '-1px' }}>
               {t}
             </button>
           ))}
         </div>
 
-        {/* BOOKINGS TAB */}
+        {/* BOOKINGS */}
         {tab === 'bookings' && (
-          <div className="overflow-x-auto">
-            <table className="w-full bg-white rounded-xl shadow-sm text-sm">
-              <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
-                <tr>
-                  {['User','Room','Check-in','Check-out','Status','Actions'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left">{h}</th>
-                  ))}
-                </tr>
+          <div style={{ background: '#111', overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>{['User', 'Room', 'Check-in', 'Check-out', 'Status', 'Actions'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {bookings.map(b => (
                   <tr key={b._id}>
-                    <td className="px-4 py-3">{b.user?.username || '—'}</td>
-                    <td className="px-4 py-3">{b.room?.type || '—'}</td>
-                    <td className="px-4 py-3">{new Date(b.startDate).toLocaleDateString()}</td>
-                    <td className="px-4 py-3">{new Date(b.endDate).toLocaleDateString()}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${b.status === 'booked' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    <td style={S.td}>{b.user?.username || '—'}</td>
+                    <td style={S.td}>{b.room?.type || '—'}</td>
+                    <td style={S.td}>{fmt(b.startDate)}</td>
+                    <td style={S.td}>{fmt(b.endDate)}</td>
+                    <td style={S.td}>
+                      <span style={{ fontSize: '9px', letterSpacing: '0.16em', textTransform: 'uppercase', padding: '4px 10px', fontFamily: 'system-ui, sans-serif', fontWeight: '700', background: b.status === 'booked' ? 'rgba(200,170,100,0.12)' : 'rgba(100,100,100,0.15)', color: b.status === 'booked' ? '#c8aa64' : '#6a6060', border: `1px solid ${b.status === 'booked' ? 'rgba(200,170,100,0.25)' : 'rgba(100,100,100,0.2)'}` }}>
                         {b.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 flex gap-2">
+                    <td style={{ ...S.td, display: 'flex', gap: '8px' }}>
                       {b.status === 'booked' && (
-                        <button onClick={() => handleCancelBooking(b._id)}
-                          className="text-xs text-orange-500 hover:text-orange-700 border border-orange-200 px-2 py-1 rounded">
-                          Cancel
-                        </button>
+                        <button onClick={() => handleCancelBooking(b._id)} style={{ background: 'transparent', border: '1px solid rgba(200,140,60,0.3)', color: '#c8903c', padding: '5px 12px', fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'system-ui, sans-serif', cursor: 'pointer' }}>Cancel</button>
                       )}
-                      <button onClick={() => handleDeleteBooking(b._id)}
-                        className="text-xs text-red-500 hover:text-red-700 border border-red-200 px-2 py-1 rounded">
-                        Delete
-                      </button>
+                      <button onClick={() => handleDeleteBooking(b._id)} style={{ background: 'transparent', border: '1px solid rgba(200,80,80,0.3)', color: '#e08080', padding: '5px 12px', fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'system-ui, sans-serif', cursor: 'pointer' }}>Delete</button>
                     </td>
                   </tr>
                 ))}
+                {bookings.length === 0 && <tr><td colSpan={6} style={{ ...S.td, textAlign: 'center', padding: '48px', color: '#6a6060' }}>No bookings yet.</td></tr>}
               </tbody>
             </table>
           </div>
         )}
 
-        {/* ROOMS TAB */}
+        {/* ROOMS */}
         {tab === 'rooms' && (
           <div>
-            {/* Room Form */}
-            <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-              <h3 className="font-semibold text-gray-700 mb-4">{editingRoom ? 'Edit Room' : 'Add New Room'}</h3>
-              <form onSubmit={handleRoomSubmit} className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Type *</label>
-                  <input required value={roomForm.type} onChange={e => setRoomForm({...roomForm, type: e.target.value})}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+            <div style={{ background: '#111', padding: '40px', marginBottom: '2px' }}>
+              <p style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#c8aa64', marginBottom: '24px', fontFamily: 'system-ui, sans-serif' }}>{editingRoom ? 'Edit Room' : 'Add New Room'}</p>
+              <form onSubmit={handleRoomSubmit}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                  <div><label style={S.label}>Room Type *</label><input required value={roomForm.type} onChange={e => setRoomForm({ ...roomForm, type: e.target.value })} style={S.input} /></div>
+                  <div><label style={S.label}>Price / night *</label><input required type="number" min="0" value={roomForm.price} onChange={e => setRoomForm({ ...roomForm, price: e.target.value })} style={S.input} /></div>
+                  <div style={{ gridColumn: '1/-1' }}><label style={S.label}>Description</label><textarea value={roomForm.description} onChange={e => setRoomForm({ ...roomForm, description: e.target.value })} rows={2} style={{ ...S.input, resize: 'vertical' }} /></div>
+                  <div><label style={S.label}>Capacity</label><input type="number" min="1" value={roomForm.capacity} onChange={e => setRoomForm({ ...roomForm, capacity: e.target.value })} style={S.input} /></div>
+                  <div><label style={S.label}>Size (sq ft)</label><input type="number" min="0" value={roomForm.size} onChange={e => setRoomForm({ ...roomForm, size: e.target.value })} style={S.input} /></div>
+                  <div><label style={S.label}>Amenities (comma-separated)</label><input value={roomForm.amenities} onChange={e => setRoomForm({ ...roomForm, amenities: e.target.value })} style={S.input} /></div>
+                  <div><label style={S.label}>Image URLs (comma-separated)</label><input value={roomForm.images} onChange={e => setRoomForm({ ...roomForm, images: e.target.value })} style={S.input} /></div>
                 </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Price/night *</label>
-                  <input required type="number" min="0" value={roomForm.price} onChange={e => setRoomForm({...roomForm, price: e.target.value})}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                <div style={{ display: 'flex', gap: '24px', marginBottom: '28px' }}>
+                  {[['availability', 'Available'], ['featured', 'Featured']].map(([key, label]) => (
+                    <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#c8b89a', fontFamily: 'system-ui, sans-serif' }}>
+                      <input type="checkbox" checked={roomForm[key]} onChange={e => setRoomForm({ ...roomForm, [key]: e.target.checked })} style={{ accentColor: '#c8aa64' }} />
+                      {label}
+                    </label>
+                  ))}
                 </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-gray-500 mb-1 block">Description</label>
-                  <textarea value={roomForm.description} onChange={e => setRoomForm({...roomForm, description: e.target.value})}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" rows={2} />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Capacity</label>
-                  <input type="number" min="1" value={roomForm.capacity} onChange={e => setRoomForm({...roomForm, capacity: e.target.value})}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Size (sq ft)</label>
-                  <input type="number" min="0" value={roomForm.size} onChange={e => setRoomForm({...roomForm, size: e.target.value})}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Amenities (comma-separated)</label>
-                  <input value={roomForm.amenities} onChange={e => setRoomForm({...roomForm, amenities: e.target.value})}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Image URLs (comma-separated)</label>
-                  <input value={roomForm.images} onChange={e => setRoomForm({...roomForm, images: e.target.value})}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
-                </div>
-                <div className="flex gap-4 items-center col-span-2">
-                  <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                    <input type="checkbox" checked={roomForm.availability} onChange={e => setRoomForm({...roomForm, availability: e.target.checked})} />
-                    Available
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                    <input type="checkbox" checked={roomForm.featured} onChange={e => setRoomForm({...roomForm, featured: e.target.checked})} />
-                    Featured
-                  </label>
-                </div>
-                <div className="col-span-2 flex gap-3">
-                  <button type="submit" className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm hover:bg-indigo-700">
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button type="submit" style={{ background: '#c8aa64', color: '#0a0a0a', border: 'none', padding: '12px 28px', fontSize: '11px', letterSpacing: '0.14em', textTransform: 'uppercase', fontFamily: 'system-ui, sans-serif', fontWeight: '700', cursor: 'pointer' }}>
                     {editingRoom ? 'Update Room' : 'Create Room'}
                   </button>
                   {editingRoom && (
-                    <button type="button" onClick={() => { setEditingRoom(null); setRoomForm({ type:'', price:'', description:'', capacity:2, size:300, amenities:'', images:'', availability:true, featured:false }); }}
-                      className="border border-gray-200 text-gray-600 px-5 py-2 rounded-lg text-sm hover:bg-gray-50">
+                    <button type="button" onClick={() => { setEditingRoom(null); setRoomForm({ type: '', price: '', description: '', capacity: 2, size: 300, amenities: '', images: '', availability: true, featured: false }); }}
+                      style={{ background: 'transparent', border: '1px solid rgba(200,170,100,0.2)', color: '#8a8070', padding: '12px 28px', fontSize: '11px', letterSpacing: '0.14em', textTransform: 'uppercase', fontFamily: 'system-ui, sans-serif', cursor: 'pointer' }}>
                       Cancel
                     </button>
                   )}
@@ -232,18 +190,22 @@ const AdminDashboard = () => {
               </form>
             </div>
 
-            {/* Rooms List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '2px' }}>
               {rooms.map(room => (
-                <div key={room._id} className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 flex justify-between items-start">
-                  <div>
-                    <p className="font-semibold text-gray-800">{room.type}</p>
-                    <p className="text-sm text-indigo-600">${room.price}/night</p>
-                    <p className="text-xs text-gray-400 mt-1">Cap: {room.capacity} · {room.size} sq ft</p>
+                <div key={room._id} style={{ background: '#111', overflow: 'hidden' }}>
+                  <div style={{ height: '160px', overflow: 'hidden' }}>
+                    <img src={room.images?.[0] || 'https://images.pexels.com/photos/271624/pexels-photo-271624.jpeg'} alt={room.type} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => startEdit(room)} className="text-xs border border-gray-200 px-2 py-1 rounded text-gray-600 hover:bg-gray-50">Edit</button>
-                    <button onClick={() => handleDeleteRoom(room._id)} className="text-xs border border-red-200 px-2 py-1 rounded text-red-500 hover:bg-red-50">Delete</button>
+                  <div style={{ padding: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                      <h3 style={{ fontSize: '18px', fontWeight: '400', color: '#f5f0e8', margin: 0 }}>{room.type}</h3>
+                      <span style={{ fontSize: '16px', color: '#c8aa64' }}>${room.price}<span style={{ fontSize: '11px', color: '#8a8070', fontFamily: 'system-ui, sans-serif' }}>/night</span></span>
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#8a8070', fontFamily: 'system-ui, sans-serif', marginBottom: '16px' }}>Cap: {room.capacity} · {room.size} sq ft {room.featured ? '· ★ Featured' : ''}</p>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => startEdit(room)} style={{ flex: 1, background: 'transparent', border: '1px solid rgba(200,170,100,0.2)', color: '#c8b89a', padding: '8px', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'system-ui, sans-serif', cursor: 'pointer' }}>Edit</button>
+                      <button onClick={() => handleDeleteRoom(room._id)} style={{ flex: 1, background: 'transparent', border: '1px solid rgba(200,80,80,0.25)', color: '#e08080', padding: '8px', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'system-ui, sans-serif', cursor: 'pointer' }}>Delete</button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -251,40 +213,33 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* USERS TAB */}
+        {/* USERS */}
         {tab === 'users' && (
-          <div className="overflow-x-auto">
-            <table className="w-full bg-white rounded-xl shadow-sm text-sm">
-              <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
-                <tr>
-                  {['Username','Email','Role','Joined','Actions'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left">{h}</th>
-                  ))}
-                </tr>
+          <div style={{ background: '#111', overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>{['Username', 'Email', 'Role', 'Joined', 'Actions'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {users.map(u => (
                   <tr key={u._id}>
-                    <td className="px-4 py-3 font-medium">{u.username}</td>
-                    <td className="px-4 py-3 text-gray-500">{u.email}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-500'}`}>
+                    <td style={{ ...S.td, color: '#f5f0e8', fontWeight: '500' }}>{u.username}</td>
+                    <td style={S.td}>{u.email}</td>
+                    <td style={S.td}>
+                      <span style={{ fontSize: '9px', letterSpacing: '0.16em', textTransform: 'uppercase', padding: '4px 10px', fontFamily: 'system-ui, sans-serif', fontWeight: '700', background: u.role === 'admin' ? 'rgba(200,170,100,0.12)' : 'rgba(100,100,100,0.15)', color: u.role === 'admin' ? '#c8aa64' : '#8a8070', border: `1px solid ${u.role === 'admin' ? 'rgba(200,170,100,0.25)' : 'rgba(100,100,100,0.2)'}` }}>
                         {u.role}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-400">{new Date(u.createdAt).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 flex gap-2">
-                      <button onClick={() => handleToggleAdmin(u)}
-                        className="text-xs border border-indigo-200 px-2 py-1 rounded text-indigo-500 hover:bg-indigo-50">
-                        {u.role === 'admin' ? 'Revoke Admin' : 'Make Admin'}
+                    <td style={S.td}>{fmt(u.createdAt)}</td>
+                    <td style={{ ...S.td, display: 'flex', gap: '8px' }}>
+                      <button onClick={() => handleToggleAdmin(u)} style={{ background: 'transparent', border: '1px solid rgba(200,170,100,0.2)', color: '#c8b89a', padding: '5px 12px', fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'system-ui, sans-serif', cursor: 'pointer' }}>
+                        {u.role === 'admin' ? 'Revoke' : 'Make Admin'}
                       </button>
-                      <button onClick={() => handleDeleteUser(u._id)}
-                        className="text-xs border border-red-200 px-2 py-1 rounded text-red-500 hover:bg-red-50">
-                        Delete
-                      </button>
+                      <button onClick={() => handleDeleteUser(u._id)} style={{ background: 'transparent', border: '1px solid rgba(200,80,80,0.3)', color: '#e08080', padding: '5px 12px', fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'system-ui, sans-serif', cursor: 'pointer' }}>Delete</button>
                     </td>
                   </tr>
                 ))}
+                {users.length === 0 && <tr><td colSpan={5} style={{ ...S.td, textAlign: 'center', padding: '48px', color: '#6a6060' }}>No users found.</td></tr>}
               </tbody>
             </table>
           </div>
