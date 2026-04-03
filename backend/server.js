@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 // Register process-level error handlers first
 process.on('uncaughtException', (err) => {
   console.error('UNCAUGHT EXCEPTION:', err.message);

@@ -1,31 +1,73 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
+import rateLimit from 'express-rate-limit';
+
+import { sanitizeRequestBody } from './middlewares/sanitizationMiddleware.js';
+import errorMiddleware from './middlewares/errorMiddleware.js';
+
+import authRoutes from './routes/authRoutes.js';
+import roomRoutes from './routes/roomRoutes.js';
+import bookingRoutes from './routes/bookingRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 const app = express();
 
-// Middleware
-app.use(express.json());
+// Security headers
+app.use(helmet());
+
+// CORS — restrict to allowed origins in production
 app.use(cors({
   origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
   credentials: true,
 }));
 
-// Health check route
+// Parse cookies (needed for httpOnly JWT cookie)
+app.use(cookieParser());
+
+// Parse JSON bodies
+app.use(express.json());
+
+// Strip HTML tags and MongoDB operator injection from request bodies
+app.use(sanitizeRequestBody);
+
+// Global rate limiter — 100 requests per 15 min per IP
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests, please try again later.' },
+});
+app.use(limiter);
+
+// Stricter limiter for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many login attempts, please try again later.' },
+});
+
+// Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Root route
+// Root
 app.get('/', (req, res) => {
   res.send('Backend is running 🚀');
 });
 
-// Example: plug in your auth routes
-// import authRoutes from './routes/auth.js';
-// app.use('/api/auth', authRoutes);
+// API Routes
+app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/rooms', roomRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/admin', adminRoutes);
 
-// Example: other API routes
-// import userRoutes from './routes/user.js';
-// app.use('/api/users', userRoutes);
+// Global error handler (must be last)
+app.use(errorMiddleware);
 
 export default app;
